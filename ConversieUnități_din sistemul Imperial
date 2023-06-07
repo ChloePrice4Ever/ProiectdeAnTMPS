@@ -1,0 +1,246 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <cmath>
+#include <algorithm>
+
+// Observer Design Pattern
+
+class Observer {
+public:
+    virtual void update(double value, const std::string& unit) = 0;
+};
+
+class Subject {
+public:
+    virtual void attach(Observer* observer) = 0;
+    virtual void detach(Observer* observer) = 0;
+    virtual void notify(double value, const std::string& unit) = 0;
+};
+
+class ConsoleOutput : public Observer {
+public:
+    void update(double value, const std::string& unit) override {
+        std::cout << "Rezultat: " << value << " " << unit << std::endl;
+    }
+};
+
+class ConversieSubject : public Subject {
+private:
+    std::vector<Observer*> observers;
+public:
+    void attach(Observer* observer) override {
+        observers.push_back(observer);
+    }
+
+    void detach(Observer* observer) override {
+        auto it = std::find(observers.begin(), observers.end(), observer);
+        if (it != observers.end()) {
+            observers.erase(it);
+        }
+    }
+
+    void notify(double value, const std::string& unit) override {
+        for (Observer* observer : observers) {
+            observer->update(value, unit);
+        }
+    }
+};
+
+// Command Design Pattern
+
+class Command {
+public:
+    virtual void execute() = 0;
+};
+
+class ConversieCommand : public Command {
+private:
+    double value1;
+    double value2;
+    std::string unit1;
+    std::string unit2;
+    ConversieSubject* subject;
+public:
+    ConversieCommand(ConversieSubject* subj, double val1, double val2, const std::string& u1, const std::string& u2)
+        : value1(val1), value2(val2), unit1(u1), unit2(u2), subject(subj) {
+    }
+
+    void execute() override {
+        double result = 0.0;
+        std::string resultUnit;
+
+        if (unit1 == "metri" && unit2 == "centimetri") {
+            result = value1 * 3.28084 + value2 * 0.0328084;
+            resultUnit = "picioare";
+        }
+        else if (unit1 == "picioare" && unit2 == "inchi") {
+            result = value1 / 3.28084 + value2 / 39.3701;
+            resultUnit = "metri";
+        }
+        else if (unit1 == "mile" && unit2 == "kilometri") {
+            result = value1 * 1.60934;
+            resultUnit = "kilometri";
+        }
+        else if (unit1 == "kilometri" && unit2 == "mile") {
+            result = value1 * 0.621371;
+            resultUnit = "mile";
+        }
+        else {
+            std::cout << "Opțiune invalidă! Vă rugăm selectați o opțiune validă." << std::endl;
+            return;
+        }
+
+        subject->notify(result, resultUnit);
+    }
+};
+
+// Strategy Design Pattern
+
+class ConversieStrategy {
+public:
+    virtual double convert(double value) = 0;
+    virtual std::string getUnit() = 0;
+};
+
+class MetriCentimetriStrategy : public ConversieStrategy {
+public:
+    double convert(double value) override {
+        return value * 3.28084;
+    }
+
+    std::string getUnit() override {
+        return "picioare";
+    }
+};
+
+class PicioareInchiStrategy : public ConversieStrategy {
+public:
+    double convert(double value) override {
+        return value / 3.28084;
+    }
+
+    std::string getUnit() override {
+        return "metri";
+    }
+};
+
+class MileKilometriStrategy : public ConversieStrategy {
+public:
+    double convert(double value) override {
+        return value * 1.60934;
+    }
+
+    std::string getUnit() override {
+        return "mile";
+    }
+};
+
+class KilometriMileStrategy : public ConversieStrategy {
+public:
+    double convert(double value) override {
+        return value * 0.621371;
+    }
+
+    std::string getUnit() override {
+        return "kilometri";
+    }
+};
+
+// Mediator Design Pattern
+
+class Mediator {
+private:
+    Command* command;
+public:
+    void setCommand(Command* cmd) {
+        command = cmd;
+    }
+
+    void executeCommand() {
+        command->execute();
+    }
+};
+
+int main() {
+    ConversieSubject subject;
+    ConsoleOutput consoleOutput;
+    subject.attach(&consoleOutput);
+
+    Mediator mediator;
+    mediator.setCommand(nullptr);
+
+    bool continueExecution = true;
+    while (continueExecution) {
+        std::cout << "Alegeti tipul de conversie:" << std::endl;
+        std::cout << "1. Metri si Centimetri in Picioare" << std::endl;
+        std::cout << "2. Picioare si Inchi in Metri" << std::endl;
+        std::cout << "3. Kilometri in Mile" << std::endl;
+        std::cout << "4. Mile in Kilometri" << std::endl;
+        std::cout << "Optiune: ";
+        int optiune;
+        std::cin >> optiune;
+
+        if (optiune == 1) {
+            double metri, centimetri;
+            std::cout << "Introduceti valoarea in metri: ";
+            std::cin >> metri;
+            std::cout << "Introduceti valoarea in centimetri: ";
+            std::cin >> centimetri;
+
+            ConversieStrategy* strategy = new MetriCentimetriStrategy();
+            double result = strategy->convert(metri + centimetri / 100.0);
+            std::string resultUnit = strategy->getUnit();
+
+            subject.notify(result, resultUnit);
+        }
+        else if (optiune == 2) {
+            double picioare, inchi;
+            std::cout << "Introduceti valoarea in picioare: ";
+            std::cin >> picioare;
+            std::cout << "Introduceti valoarea in inchi: ";
+            std::cin >> inchi;
+
+            ConversieStrategy* strategy = new PicioareInchiStrategy();
+            double result = strategy->convert(picioare + inchi / 12.0);
+            std::string resultUnit = strategy->getUnit();
+
+            subject.notify(result, resultUnit);
+        }
+        else if (optiune == 3) {
+            double mile;
+            std::cout << "Introduceti valoarea in kilometri: ";
+            std::cin >> mile;
+
+            ConversieStrategy* strategy = new MileKilometriStrategy();
+            double result = strategy->convert(mile);
+            std::string resultUnit = strategy->getUnit();
+
+            subject.notify(result, resultUnit);
+        }
+        else if (optiune == 4) {
+            double kilometri;
+            std::cout << "Introduceti valoarea in mile: ";
+            std::cin >> kilometri;
+
+            ConversieStrategy* strategy = new KilometriMileStrategy();
+            double result = strategy->convert(kilometri);
+            std::string resultUnit = strategy->getUnit();
+
+            subject.notify(result, resultUnit);
+        }
+        else {
+            std::cout << "Opțiune invalidă! Vă rugăm selectați o opțiune validă." << std::endl;
+        }
+
+        std::cout << "Doriti sa efectuati o alta conversie? (Da/Nu): ";
+        std::string answer;
+        std::cin >> answer;
+        if (answer == "Nu" || answer == "nu") {
+            continueExecution = false;
+        }
+        std::cout << std::endl;
+    }
+
+    return 0;
+}
